@@ -323,10 +323,12 @@ fn parse_csi(buffer: &[u8]) -> Result<Option<Event>> {
 
 fn parse_osc(buffer: &[u8]) -> Result<Option<Event>> {
     assert!(buffer.starts_with(b"\x1B]"));
-    if !buffer.ends_with(b"\x1B\\") {
-        return Ok(None);
-    }
-    let s = str::from_utf8(&buffer[2..buffer.len() - 2])?;
+    let term_len = match (buffer.ends_with(b"\x1B\\"), buffer.ends_with(b"\x07")) {
+        (true, false) => 2,
+        (false, true) => 1,
+        _ => return Ok(None),
+    };
+    let s = str::from_utf8(&buffer[2..buffer.len() - term_len])?;
     let mut split = s.split(';');
     let index = next_parsed::<u8>(&mut split)?;
     let Some(color_number) = osc::DynamicColorNumber::from_index(index) else {
